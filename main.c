@@ -3,37 +3,72 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
-
-int ilosc_plikow(const char *sciezka_nazwa) {
-    int licznik = 0;
+typedef struct {
+    int ilosc_plikow;
+    int ilosc_folderow;
+} Ilosc;
+typedef struct {
+    char **pliki;
+    int ilosc_plikow;
+    char **foldery;
+    int ilosc_folderow;
+} ZawartoscFolderu;
+Ilosc liczba(const char *sciezka_nazwa) {
+    Ilosc licznik = {0,0};
     struct dirent *plik;
     DIR *sciezka = opendir(sciezka_nazwa);
-    if (!sciezka) return 0;
-    while (readdir(sciezka)) licznik++;
+    //if (!sciezka) return NULL;
+    while ((plik = readdir(sciezka)) != NULL){
+     if (strcmp(plik->d_name, ".") == 0 || strcmp(plik->d_name, "..") == 0) continue;
+
+     if(plik->d_type == DT_DIR){
+               licznik.ilosc_folderow++;
+          }
+     else if(plik->d_type == DT_REG){
+               licznik.ilosc_plikow++;
+          }
+
+
+    };
     closedir(sciezka);
     return licznik;
 }
 
 
 
-char** lista_rzeczy( const char *nazwa_sciezki ) {
-     int ilosc = ilosc_plikow(nazwa_sciezki);
+ZawartoscFolderu lista_rzeczy( const char *nazwa_sciezki ) {
+     Ilosc ilosc = liczba(nazwa_sciezki);
 
-     if(ilosc == 0) return NULL;
+     //if((ilosc.ilosc_plikow+ilosc_folderow) == 0) return NULL;
 
-     char **t = (char**) malloc(ilosc * sizeof(char*));
-     
      struct dirent *plik;
      DIR *sciezka = opendir(nazwa_sciezki);
-     int i = 0;
-     while(( plik = readdir( sciezka ) ) != NULL ){
-          t[i] = (char*) malloc(strlen(plik->d_name) + 1);
 
-          strcpy(t[i], plik->d_name);
-          i++;
+     ZawartoscFolderu zwracak;
+     zwracak.pliki = (char**) malloc(ilosc.ilosc_plikow * sizeof(char*));
+     zwracak.foldery = (char**) malloc(ilosc.ilosc_folderow * sizeof(char*));
+     char **pliki = zwracak.pliki;
+     char **foldery = zwracak.foldery;
+     int i = 0;
+     int j = 0;
+     while(( plik = readdir( sciezka ) ) != NULL ){
+          if (strcmp(plik->d_name, ".") == 0 || strcmp(plik->d_name, "..") == 0) continue;
+          
+          if(plik->d_type == DT_DIR){
+               foldery[i] = (char*) malloc(strlen(plik->d_name) + 1);
+               strcpy(foldery[i], plik->d_name);
+               i++;
+          }
+          else if(plik->d_type == DT_REG){
+               pliki[j] = (char*) malloc(strlen(plik->d_name) + 1);
+               strcpy(pliki[j], plik->d_name);
+               j++;
+          }
+
+          
         }
      closedir( sciezka );
-     return t;
+     return zwracak;
      
 }
 
@@ -41,9 +76,11 @@ char** lista_rzeczy( const char *nazwa_sciezki ) {
 
 int main( int argc, char ** argv ) {
 
-     char **lista = lista_rzeczy(".");
+     ZawartoscFolderu tablica = lista_rzeczy(".");
+     char **lista = tablica.foldery;
+     Ilosc cos = liczba(".");
      if(lista){
-          for(int i = 0; i < ilosc_plikow(".");i++){
+          for(int i = 0; i < cos.ilosc_folderow;i++){
                printf("plik %d: %s\n",i,lista[i]);
                free(lista[i]);
           }
