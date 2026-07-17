@@ -33,6 +33,7 @@ Ilosc liczba(const char *nazwa_sciezki) {
     Ilosc licznik = {0,0};
     struct dirent *plik;
     DIR *sciezka = opendir(nazwa_sciezki);
+
     //if (!sciezka) return NULL;
     while ((plik = readdir(sciezka)) != NULL){
      if (strcmp(plik->d_name, ".") == 0 || strcmp(plik->d_name, "..") == 0) continue;
@@ -57,8 +58,15 @@ ZawartoscFolderu lista_rzeczy( const char *nazwa_sciezki ) {
 
      struct dirent *plik;
      DIR *sciezka = opendir(nazwa_sciezki);
+      
+      
 
      ZawartoscFolderu zwracak;
+
+
+     zwracak.ilosc_plikow = ilosc.ilosc_plikow;
+     zwracak.ilosc_folderow = ilosc.ilosc_folderow;
+     
      zwracak.pliki = (char**) malloc(ilosc.ilosc_plikow * sizeof(char*));
      zwracak.foldery = (char**) malloc(ilosc.ilosc_folderow * sizeof(char*));
      char **pliki = zwracak.pliki;
@@ -87,7 +95,7 @@ ZawartoscFolderu lista_rzeczy( const char *nazwa_sciezki ) {
 }
 
 
-
+/*
 void zapis(const char *nazwa_sciezki){
      FILE *fptr;
      fptr = fopen("zapis.json","a");
@@ -136,12 +144,12 @@ void zapis(const char *nazwa_sciezki){
 
      fclose(fptr);
 }
+*/
 
-
-
+/*
 int main( int argc, char ** argv ) {
      /*
-     ZawartoscFolderu tablica = lista_rzeczy(".");
+     ZawartoscFolderu tablica = lista_rzecze(".");
      char **lista = tablica.foldery;
      Ilosc cos = liczba(".");
      if(tablica.foldery){
@@ -150,10 +158,11 @@ int main( int argc, char ** argv ) {
                free(tablica.foldery[i]);
           }
           free(tablica.foldery);
-     }*/
+     }
      
      zapis("/");
 
 
      return 0;
 }
+*/
