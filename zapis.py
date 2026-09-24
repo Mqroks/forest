@@ -1,6 +1,7 @@
 import os
 import ctypes
 import json
+import sys
 
 sciezka_os = os.path.abspath("pliki.so")
 lib = ctypes.CDLL(sciezka_os)
@@ -81,7 +82,13 @@ lib.lista_rzeczy.argtypes = [ctypes.c_char_p]
 lib.lista_rzeczy.restype = ZawartoscFolderu
 
 sciezka_do_pliku = "zawartosc.json"
-sciezka = b"/"
+
+if len(sys.argv) > 1:
+    sciezka_str = sys.argv[1]
+else:
+    sciezka_str = "/"  # domyślna wartość, gdy nie podano nic
+
+sciezka = sciezka_str.encode("utf-8")
 
 struktura = lib.lista_rzeczy(sciezka)
 drzewo = zbierz(struktura, sciezka)
