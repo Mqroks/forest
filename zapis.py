@@ -6,13 +6,14 @@ sciezka_os = os.path.abspath("pliki.so")
 lib = ctypes.CDLL(sciezka_os)
 
 
-def zapis(struktura, sciezka, sciezka_do_pliku):
-    # 1. DIAGNOZA: Wyświetlamy, co Python otrzymał od C
+def zbierz(struktura, sciezka):
+    """Buduje i zwraca słownik reprezentujący dany folder wraz z podfolderami (rekurencyjnie)."""
+
     print(
         f"Odczytano {struktura.ilosc_plikow} plików i {struktura.ilosc_folderow} folderów z: {sciezka.decode('utf-8')}"
     )
 
-    # 2. TARCZA: Jeśli liczby są z kosmosu (śmieci z pamięci), przerywamy!
+    # TARCZA: liczby z kosmosu = śmieci z pamięci
     if (
         struktura.ilosc_folderow < 0
         or struktura.ilosc_folderow > 100000
@@ -21,54 +22,50 @@ def zapis(struktura, sciezka, sciezka_do_pliku):
         print(
             "UWAGA: Funkcja w C zwróciła uszkodzone dane z pamięci! Pomijam ten folder."
         )
-        return
+        return None
 
-    # 3. TARCZA: Sprawdzamy, czy wskaźniki w ogóle istnieją (nie są NULL)
     if struktura.ilosc_plikow > 0 and not struktura.pliki:
         print("UWAGA: Brakuje wskaźnika na pliki! Pomijam.")
-        return
+        return None
 
     if struktura.ilosc_folderow > 0 and not struktura.foldery:
         print("UWAGA: Brakuje wskaźnika na foldery! Pomijam.")
-        return
+        return None
+
+    # --- pliki w tym folderze ---
     pliki_list = []
     for i in range(struktura.ilosc_plikow):
         bajtowa_nazwa = struktura.pliki[i]
         if bajtowa_nazwa:
             pliki_list.append(bajtowa_nazwa.decode("utf-8"))
 
-    with open(sciezka_do_pliku, "a", encoding="utf-8") as plik:
-        json.dump(
-            {"pliki": pliki_list, "ilosc_plikow": struktura.ilosc_plikow},
-            plik,
-            indent=4,
-            ensure_ascii=False,
-        )
-
-    foldery_list = []
+    # --- podfoldery: rekurencja, wynik trafia do słownika "foldery" ---
+    podfoldery = {}
     for i in range(struktura.ilosc_folderow):
         bajtowa_nazwa = struktura.foldery[i]
-        if bajtowa_nazwa and bajtowa_nazwa not in [b".", b".."]:
-            foldery_list.append(bajtowa_nazwa.decode("utf-8"))
+        if not bajtowa_nazwa or bajtowa_nazwa in (b".", b".."):
+            continue
 
-            if sciezka.endswith(b"/"):
-                nowa_sciezka = sciezka + bajtowa_nazwa
-            else:
-                nowa_sciezka = sciezka + b"/" + bajtowa_nazwa
-            if not nowa_sciezka.startswith(
-                (b"/proc", b"/dev", b"/run", b"/sys", b"/tmp")
-            ):
-                nowa_struktura = lib.lista_rzeczy(nowa_sciezka)
+        nazwa_str = bajtowa_nazwa.decode("utf-8")
 
-                zapis(nowa_struktura, nowa_sciezka, sciezka_do_pliku)
+        if sciezka.endswith(b"/"):
+            nowa_sciezka = sciezka + bajtowa_nazwa
+        else:
+            nowa_sciezka = sciezka + b"/" + bajtowa_nazwa
 
-    with open(sciezka_do_pliku, "a", encoding="utf-8") as plik:
-        json.dump(
-            {"foldery": foldery_list, "ilosc_folderow": struktura.ilosc_folderow},
-            plik,
-            indent=4,
-            ensure_ascii=False,
-        )
+        if nowa_sciezka.startswith((b"/proc", b"/dev", b"/run", b"/sys", b"/tmp")):
+            podfoldery[nazwa_str] = {"pominieto": "wykluczony folder systemowy"}
+            continue
+
+        nowa_struktura = lib.lista_rzeczy(nowa_sciezka)
+        wynik = zbierz(nowa_struktura, nowa_sciezka)
+        if wynik is not None:
+            podfoldery[nazwa_str] = wynik
+
+    return {
+        "pliki": pliki_list,
+        "foldery": podfoldery,
+    }
 
 
 class ZawartoscFolderu(ctypes.Structure):
@@ -87,4 +84,7 @@ sciezka_do_pliku = "zawartosc.json"
 sciezka = b"/"
 
 struktura = lib.lista_rzeczy(sciezka)
-zapis(struktura, sciezka, sciezka_do_pliku)
+drzewo = zbierz(struktura, sciezka)
+
+with open(sciezka_do_pliku, "w", encoding="utf-8") as plik:
+    json.dump(drzewo, plik, indent=4, ensure_ascii=False)
